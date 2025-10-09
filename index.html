@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset='utf-8'>
+  <title>Survive this One</title>
+  <style>
+    body { background-color:#000;margin:0;overflow:hidden;font-family:Arial, sans-serif; }
+    #hud { position:absolute;top:20px;left:20px;color:#fff;font-size:14px;z-index:100;background:rgba(0,0,0,.45);padding:14px 16px;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.35);backdrop-filter: blur(4px);border:1px solid rgba(255,255,255,.08) }
+    #hud .title { font-size:12px; letter-spacing:.06em; opacity:.85; margin-bottom:8px; text-transform:uppercase }
+    #hud .grid { display:grid; grid-template-columns:auto auto; gap:6px 14px; align-items:center }
+    #hud .label { opacity:.85 }
+    #hud .value { font-size:16px; font-weight:700 }
+    #healthBar { margin-top:10px; width:220px; height:10px; background:rgba(255,255,255,.12); border-radius:999px; overflow:hidden; border:1px solid rgba(255,255,255,.12) }
+    #healthFill { height:100%; width:100%; background:linear-gradient(90deg, #19e68c, #0fbf6f); box-shadow:0 0 10px rgba(25,230,140,.6) inset }
+    #instructions { position:absolute;top:20px;right:20px;color:#fff;font-size:12px;z-index:100;background:rgba(0,0,0,.45);padding:12px 14px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.35) }
+    #gameOver { position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);color:#fff;font-size:32px;z-index:200;background:rgba(0,0,0,.8);padding:30px;border-radius:12px;display:none;text-align:center; }
+    #gameOver button { margin-top:20px;padding:10px 30px;font-size:18px;cursor:pointer;background:#4CAF50;border:none;color:#fff;border-radius:5px; }
+
+    /* Menú de inicio */
+    #startMenu { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:300;background:radial-gradient(ellipse at center, rgba(0,0,0,.75), rgba(0,0,0,.9)); }
+    #startCard { background:rgba(20,20,20,.9); padding:28px 36px; border-radius:14px; color:#fff; text-align:center; box-shadow:0 12px 30px rgba(0,0,0,.45) }
+    #startCard h1 { margin:0 0 12px; font-size:26px; letter-spacing:.5px }
+    #startCard p { margin:0 0 18px; opacity:.85; font-size:14px }
+    #startCard button { padding:12px 28px; font-size:16px; cursor:pointer; background:#00b894; color:#fff; border:none; border-radius:8px; transition:transform .05s ease, filter .2s ease }
+    #startCard button:hover { filter:brightness(1.1) }
+    #startCard button:active { transform:translateY(1px) }
+
+    /* Menú siguiente oleada */
+    #nextWaveMenu { position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:300;background:radial-gradient(ellipse at center, rgba(0,0,0,.55), rgba(0,0,0,.75)); }
+    #nextWaveCard { background:rgba(25,25,25,.92); padding:22px 28px; border-radius:12px; color:#fff; text-align:center; box-shadow:0 10px 26px rgba(0,0,0,.4) }
+    #nextWaveCard h2 { margin:0 0 10px; font-size:22px }
+    #nextWaveCard p { margin:0 0 16px; opacity:.9; font-size:14px }
+    #nextWaveCard button { padding:10px 22px; font-size:15px; cursor:pointer; background:#28a745; color:#fff; border:none; border-radius:8px }
+
+    /* Cuenta atrás inicio de oleada */
+    #countdown { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#ffffff; font-size:72px; font-weight:bold; z-index:350; display:none; text-shadow:0 0 12px rgba(0,0,0,.6) }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+
+  <!-- Menú de inicio -->
+  <div id="startMenu">
+    <div id="startCard">
+      <h1>Survive this One</h1>
+      <p>Sobrevive a oleadas cada vez más difíciles.</p>
+      <button onclick="startGame()">Empezar</button>
+    </div>
+  </div>
+
+  <!-- Menú siguiente oleada -->
+  <div id="nextWaveMenu">
+    <div id="nextWaveCard">
+      <h2>Siguiente oleada</h2>
+      <p>Prepárate para más enemigos.</p>
+      <button onclick="startNextWave()">Siguiente oleada</button>
+    </div>
+  </div>
+
+  <!-- Cuenta atrás -->
+  <div id="countdown">3</div>
+
+  <div id="hud">
+    <div class="title">Estado</div>
+    <div class="grid">
+      <div class="label">Oleada</div>
+      <div class="value"><span id="wave">1</span></div>
+      <div class="label">Enemigos</div>
+      <div class="value"><span id="enemies">0</span></div>
+      <div class="label">Kills</div>
+      <div class="value"><span id="kills">0</span></div>
+      <div class="label">Vida</div>
+      <div class="value"><span id="health">100</span></div>
+    </div>
+    <div id="healthBar"><div id="healthFill"></div></div>
+  </div>
+
+  <div id="instructions">
+    <div><strong>Controles:</strong></div>
+    <div>WASD - Mover al personaje</div>
+    <div>Click izquierdo - Ataque</div>
+    <div>Rueda del ratón - Zoom de la cámara</div>
+  </div>
+
+  <div id="gameOver">
+    <div>¡Game Over!</div>
+    <button onclick="location.reload()">Reintentar</button>
+  </div>
+
+  <!-- Librerías -->
+  <script src="lib/three.min_r140.js"></script>
+  <script src="lib/OrbitControls.js"></script>
+  <script src="lib/stats.min.js"></script>
+
+  <!-- FBXLoader -->
+  <script src="https://unpkg.com/three@0.140.0/examples/js/libs/fflate.min.js"></script>
+  <script src="https://unpkg.com/three@0.140.0/examples/js/loaders/FBXLoader.js"></script>
+  <script src="https://unpkg.com/three@0.140.0/examples/js/loaders/EXRLoader.js"></script>
+
+
+  <!-- Juego -->
+  <script src="js/Player.js"></script>
+  <script src="js/Enemy.js"></script>
+  <script src="js/Island.js"></script>
+  <script src="js/WaveManager.js"></script>
+  <script src="js/game.js"></script>
+  <script>
+    function startGame(){
+      const menu = document.getElementById('startMenu');
+      if(menu) menu.style.display = 'none';
+      if(typeof window.__startGameNow === 'function') window.__startGameNow();
+    }
+    function startNextWave(){
+      const menu = document.getElementById('nextWaveMenu');
+      if(menu) menu.style.display = 'none';
+      if(typeof window.__startNextWave === 'function') window.__startNextWave();
+    }
+  </script>
+</body>
+</html>
