@@ -58,10 +58,10 @@ class Player {
     }
 
     _loadFBXModelAndAnims() {
-        this.loader.setResourcePath('/models/character/'); 
+        this.loader.setResourcePath('models/character/'); 
 
         this.loader.load(
-            '/models/character/character.fbx',
+            'models/character/character.fbx',
             (fbx) => {
                 fbx.scale.setScalar(this.MODEL_SCALE);
                 fbx.traverse((o) => { 
@@ -155,9 +155,9 @@ class Player {
                 });
 
                 Promise.all([
-                    loadClip('/models/character/Idle.fbx',  'idle'),
-                    loadClip('/models/character/Run.fbx',   'run'),
-                    loadClip('/models/character/Slash.fbx', 'slash'),
+                    loadClip('models/character/Idle.fbx',  'idle'),
+                    loadClip('models/character/Run.fbx',   'run'),
+                    loadClip('models/character/Slash.fbx', 'slash'),
                 ]).then(() => {
                     this.animsReady = true;
                     this._fadeTo('idle', 0.01);

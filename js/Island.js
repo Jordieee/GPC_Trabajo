@@ -57,7 +57,8 @@ class DecorationSystem {
         }
 
         // --- Flores  ---
-        const flowerRadiusFactor = 0.35; // cerca del centro
+        
+        const flowerRadiusFactor = 0.35; 
         for (let i = 0; i < flowerGroups; i++) {
             const angle = (i / flowerGroups) * Math.PI * 2;
             const distance = island.radius * flowerRadiusFactor * (0.5 + Math.random() * 0.5);
