@@ -58,10 +58,10 @@ class Player {
     }
 
     _loadFBXModelAndAnims() {
-        this.loader.setResourcePath('/GPC_Trabajo/models/character/'); 
+        this.loader.setResourcePath('models/character/'); 
 
         this.loader.load(
-            '/GPC_Trabajo/models/character/character.fbx',
+            'models/character/character.fbx',
             (fbx) => {
                 fbx.scale.setScalar(this.MODEL_SCALE);
                 fbx.traverse((o) => { 

@@ -119,7 +119,7 @@ class Enemy {
 
     _loadFBXModelAndWalk() {
         this.loader.load(
-            '/GPC_Trabajo/models/Enemy/Enemy.fbx',
+            'models/Enemy/Enemy.fbx',
             (fbx) => {
                 fbx.scale.setScalar(this.MODEL_SCALE);
                 fbx.traverse((o) => { 
@@ -170,9 +170,9 @@ class Enemy {
                     }
                 });
                 
-                this.loader.setResourcePath('/GPC_Trabajo/models/Enemy/');
+                this.loader.setResourcePath('models/Enemy/');
     
-                this.loader.load('/GPC_Trabajo/models/Enemy/Walk.fbx', (animFBX) => {
+                this.loader.load('models/Enemy/Walk.fbx', (animFBX) => {
                     const clip = animFBX.animations && animFBX.animations[0];
                     if (clip) {
                         const inPlace = this._makeClipInPlace(clip);
