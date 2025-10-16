@@ -11,6 +11,9 @@ var clock;
 var gameOver = false;
 var cameraDistance = 25; 
 var cameraHeight = 20;
+var cameraAngleH = 0; 
+var cameraAngleV = 0.5; 
+var mouseSensitivity = 0.002;
 
 function loadCrossCubeTexture(url, onLoad) {
   const img = new Image();
@@ -99,18 +102,36 @@ function updateCamera(deltaTime) {
 
   const playerPos = player.getPosition();
 
+  // Calcular posición de la cámara basada en los ángulos
+  const horizontalDist = cameraDistance * Math.cos(cameraAngleV);
+  const verticalHeight = cameraDistance * Math.sin(cameraAngleV);
+  
   const targetCameraPos = new THREE.Vector3(
-    playerPos.x,
-    playerPos.y + cameraHeight,
-    playerPos.z + cameraDistance
+    playerPos.x + Math.sin(cameraAngleH) * horizontalDist,
+    playerPos.y + verticalHeight + cameraHeight * 0.3,
+    playerPos.z + Math.cos(cameraAngleH) * horizontalDist
   );
 
   camera.position.lerp(targetCameraPos, deltaTime * 3);
-  camera.lookAt(playerPos);
+  camera.lookAt(new THREE.Vector3(
+    playerPos.x,
+    playerPos.y + 2, 
+    playerPos.z
+  ));
 }
 
 /* ------------------------------ Inicialización ------------------------------ */
 function init() {
+
+  // Stats 
+  stats = new Stats();
+  stats.showPanel(0); 
+  stats.dom.style.position = 'absolute';
+  stats.dom.style.top = '20px';
+  stats.dom.style.right = '20px';
+  stats.dom.style.left = 'auto';
+  document.body.appendChild(stats.dom);
+
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(new THREE.Color(0x87CEEB));
@@ -189,6 +210,15 @@ function init() {
     };
   })();
 
+  document.addEventListener('mousemove', (e) => {
+    const deltaX = e.movementX || 0;
+    const deltaY = e.movementY || 0;
+    
+    cameraAngleH -= deltaX * mouseSensitivity;
+    cameraAngleV += deltaY * mouseSensitivity;
+    
+    cameraAngleV = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, cameraAngleV));
+  });
 
   window.addEventListener('resize', updateAspectRatio);
 
@@ -289,6 +319,8 @@ function update() {
 /* --------------------------------- Render -------------------------------- */
 function render() {
   requestAnimationFrame(render);
+  if (stats) stats.begin();
+
   update();
 
   renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
@@ -323,6 +355,7 @@ function render() {
   scene.background = prevBG;
   scene.fog = prevFog;
   renderer.setClearColor(prevClearColor, prevClearAlpha);
+  if (stats) stats.end();
 
 }
 
