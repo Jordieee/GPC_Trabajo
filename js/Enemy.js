@@ -7,6 +7,47 @@
  */
 
 class Enemy {
+    static _prefab = null;
+    static _walkClip = null;
+    static _preloadPromise = null;
+
+    static preload() {
+        if (Enemy._preloadPromise) return Enemy._preloadPromise;
+        const loader = new THREE.FBXLoader();
+        loader.setResourcePath('models/Enemy/');
+        Enemy._preloadPromise = new Promise((resolve, reject) => {
+            loader.load('models/Enemy/Enemy.fbx', (fbx) => {
+                fbx.traverse((o) => { 
+                    if (o.isMesh) { 
+                      o.castShadow = true; 
+                      o.receiveShadow = true;
+                      if (o.material) {
+                        const materials = Array.isArray(o.material) ? o.material : [o.material];
+                        materials.forEach(mat => {
+                          if (mat.map && mat.map.image) { 
+                            mat.map.encoding = THREE.sRGBEncoding;
+                          }
+                          if (mat.emissiveMap && mat.emissiveMap.image) { 
+                            mat.emissiveMap.encoding = THREE.sRGBEncoding;
+                          }
+                          if (mat.aoMap && mat.aoMap.image) { 
+                            mat.aoMap.encoding = THREE.LinearEncoding;
+                          }
+                          mat.needsUpdate = true;
+                        });
+                      }
+                    } 
+                });
+                Enemy._prefab = fbx;
+                loader.load('models/Enemy/Walk.fbx', (animFBX) => {
+                    Enemy._walkClip = animFBX.animations && animFBX.animations[0] ? animFBX.animations[0] : null;
+                    resolve();
+                }, undefined, reject);
+            }, undefined, reject);
+        });
+        return Enemy._preloadPromise;
+    }
+
     constructor(scene, position, islandManager, type = 'basic') {
         this.scene = scene;
         this.islandManager = islandManager;
@@ -29,7 +70,12 @@ class Enemy {
         this.materialsWithEmissive = [];
 
         this._createPlaceholder();
-        this._loadFBXModelAndWalk();
+
+        if (Enemy._prefab) {
+            this._instantiateFromPrefab();
+        } else {
+            Enemy.preload().then(() => this._instantiateFromPrefab());
+        }
 
         // Pathfinding 
         this.currentDirection = null;
@@ -111,84 +157,89 @@ class Enemy {
                 }
                 ph.material.dispose?.();
             }
-            
             this.modelRoot.remove(ph);
             ph.geometry && ph.geometry.dispose?.();
         }
     }
 
-    _loadFBXModelAndWalk() {
-        this.loader.load(
-            'models/Enemy/Enemy.fbx',
-            (fbx) => {
-                fbx.scale.setScalar(this.MODEL_SCALE);
-                fbx.traverse((o) => { 
-                    if (o.isMesh) { 
-                      o.castShadow = true; 
-                      o.receiveShadow = true;
-                  
-                      if (o.material) {
-                        const materials = Array.isArray(o.material) ? o.material : [o.material];
-                        materials.forEach(mat => {
-                          if (mat.map && mat.map.image) { 
-                            mat.map.encoding = THREE.sRGBEncoding;
-                          }
-                          if (mat.emissiveMap && mat.emissiveMap.image) { 
-                            mat.emissiveMap.encoding = THREE.sRGBEncoding;
-                          }
-                          if (mat.aoMap && mat.aoMap.image) { 
-                            mat.aoMap.encoding = THREE.LinearEncoding;
-                          }
-                  
-                          if (mat.color && mat.color.getHex() === 0x000000) {
-                            mat.color.setHex(this.color);
-                          }
-                          if (mat.emissive) {
-                            mat.emissive.setHex(0x0a0505);
-                          }
-                          mat.needsUpdate = true;
-                        });
-                      }
-                    } 
-                  });
-                  
-                this.modelRoot.add(fbx);
-                this._removePlaceholder();
-    
-                this.mixer = new THREE.AnimationMixer(fbx);
-                
-                fbx.traverse((o) => {
-                    if (o.isMesh) {
-                        const materials = Array.isArray(o.material) ? o.material : [o.material];
-                        for (const m of materials) {
-                            if (m && 'emissive' in m && m.emissive) {
-                                if (!m.userData) m.userData = {};
-                                m.userData._origEmissive = m.emissive.getHex();
-                                this.materialsWithEmissive.push(m);
-                            }
-                        }
+    _instantiateFromPrefab() {
+        const model = this._cloneSkinned(Enemy._prefab);
+        model.scale.setScalar(this.MODEL_SCALE);
+        model.traverse((o) => { 
+            if (!o.isMesh) return;
+          
+            if (Array.isArray(o.material)) {
+              o.material = o.material.map(m => (m && m.clone) ? m.clone() : m);
+            } else if (o.material && o.material.clone) {
+              o.material = o.material.clone();
+            }
+          
+            o.castShadow = true; 
+            o.receiveShadow = true;
+          
+            const materials = Array.isArray(o.material) ? o.material : [o.material];
+          
+            materials.forEach(mat => {
+              if (!mat) return;
+          
+              if (mat.color && mat.color.getHex && mat.color.getHex() === 0x000000) {
+                mat.color.setHex(this.color);
+              }
+          
+              if (mat.emissive) {
+                if (!mat.userData) mat.userData = {};
+                mat.userData._origEmissive = mat.emissive.getHex ? mat.emissive.getHex() : 0x000000;
+                this.materialsWithEmissive.push(mat);
+                mat.emissive.setHex(0x0a0505);
+              }
+            });
+          });
+          
+        this.modelRoot.add(model);
+        this._removePlaceholder();
+        this.mixer = new THREE.AnimationMixer(model);
+        model.traverse((o) => {
+            if (o.isMesh) {
+                const materials = Array.isArray(o.material) ? o.material : [o.material];
+                for (const m of materials) {
+                    if (m && 'emissive' in m && m.emissive) {
+                        if (!m.userData) m.userData = {};
+                        if (typeof m.userData._origEmissive === 'undefined') m.userData._origEmissive = m.emissive.getHex();
+                        this.materialsWithEmissive.push(m);
                     }
-                });
-                
-                this.loader.setResourcePath('models/Enemy/');
-    
-                this.loader.load('models/Enemy/Walk.fbx', (animFBX) => {
-                    const clip = animFBX.animations && animFBX.animations[0];
-                    if (clip) {
-                        const inPlace = this._makeClipInPlace(clip);
-                        const action = this.mixer.clipAction(inPlace);
-                        action.setLoop(THREE.LoopRepeat, Infinity);
-                        action.timeScale = this.type === 'fast' ? 3.5 : (this.type === 'tank' ? 2.0 : 2.5);
-                        action.enabled = true;
-                        action.play();
-                        this.actions.walk = action;
-                        this.activeAction = action;
-                    }
-                });
-            },
-            undefined,
-            (err) => { console.error('Error cargando Enemy.fbx', err); }
-        );
+                }
+            }
+        });
+        if (Enemy._walkClip) {
+            const inPlace = this._makeClipInPlace(Enemy._walkClip.clone());
+            const action = this.mixer.clipAction(inPlace);
+            action.setLoop(THREE.LoopRepeat, Infinity);
+            action.timeScale = this.type === 'fast' ? 3.5 : (this.type === 'tank' ? 2.0 : 2.5);
+            action.enabled = true;
+            action.play();
+            this.actions.walk = action;
+            this.activeAction = action;
+        }
+    }
+
+    _cloneSkinned(source) {
+        const clone = source.clone(true);
+        const sourceBonesByName = {};
+        const cloneBonesByName = {};
+        source.traverse(o => { if (o.isBone) sourceBonesByName[o.name] = o; });
+        clone.traverse(o => { if (o.isBone) cloneBonesByName[o.name] = o; });
+        const sourceSkinnedByName = {};
+        source.traverse(o => { if (o.isSkinnedMesh) sourceSkinnedByName[o.name] = o; });
+        clone.traverse(o => {
+            if (o.isSkinnedMesh) {
+                const src = sourceSkinnedByName[o.name];
+                const bones = src.skeleton.bones.map(b => cloneBonesByName[b.name]).filter(Boolean);
+                const boneInverses = src.skeleton.boneInverses.map(m => m.clone());
+                o.bind(new THREE.Skeleton(bones, boneInverses), src.bindMatrix.clone());
+                o.normalizeSkinWeights();
+            }
+        });
+        return clone;
     }
 
     update(deltaTime, player, otherEnemies) {
@@ -404,14 +455,21 @@ class Enemy {
             this.modelRoot.traverse((o) => {
                 if (o.isMesh) {
                     o.geometry && o.geometry.dispose?.();
-                    if (Array.isArray(o.material)) o.material.forEach(m => m.dispose?.());
-                    else o.material && o.material.dispose?.();
+                    if (o.material) {
+                        if (Array.isArray(o.material)) o.material.forEach(m => m.dispose && m.dispose());
+                        else o.material.dispose && o.material.dispose();
+                    }
                 }
             });
-            this.modelRoot = null;
         }
+        this.modelRoot = null;
         this.mesh = null;
         this.mixer = null;
+        this.actions = null;
+        this.activeAction = null;
         this.materialsWithEmissive = [];
     }
+
+    getPosition() { return this.mesh ? this.mesh.position.clone() : new THREE.Vector3(); }
 }
+
